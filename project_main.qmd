@@ -1,0 +1,244 @@
+---
+title: "Data Visualization Project"
+author: "Sowmya Janmahanthi"
+format: revealjs
+editor: visual
+echo: true 
+output-location: slide
+css: project.css
+---
+
+## Dataset: High Granularity Carbon Emissions
+```{r}
+#| echo: false
+library(readr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+library(plotly)
+dataset <- read_csv("dataset/emissions_high_granularity.csv", show_col_types=FALSE)
+headers <- colnames(dataset)
+headers_tibble <- tibble(headers)
+as.data.frame(headers)
+```
+
+## Top 10 Parent Entities and their Total Emissions
+```{r}
+dataset <- dataset |>
+  mutate(total_emissions_MtCO2e = as.numeric(total_emissions_MtCO2e))
+dataset <- dataset |>
+  filter(!is.na(total_emissions_MtCO2e))
+agg_top_10 <- dataset |>
+  group_by(parent_entity) |>
+  summarise(total_emissions = sum(total_emissions_MtCO2e, na.rm = TRUE))|>
+  arrange(desc(total_emissions)) |>
+  head(10)
+  library(scales)
+
+ggplot(agg_top_10) +
+  geom_bar(aes(x = reorder(parent_entity, total_emissions), 
+               y = total_emissions, fill = total_emissions),
+           stat = "identity") +
+  coord_flip() +
+  scale_fill_viridis_c(labels = label_comma()) + # total_emissions is continuous data
+  ggtitle("Total Emissions by Top 10 Parent Entities") +
+  xlab("Parent Entity") +
+  ylab("Total Emissions (MtCO2e)") +
+  scale_y_continuous(labels = label_comma()) +
+  theme_minimal() +
+  theme(
+    axis.text.y = element_text(size = 6, angle = 0, hjust = 1),
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "right"
+  )
+```
+## Total Emissions-Parent Type(State/Investor)
+```{r}
+library(scales)
+dataset <- dataset |>
+  mutate(total_emissions_MtCO2e = as.numeric(total_emissions_MtCO2e))
+
+emissions_by_parent_type <- dataset |>
+  group_by(parent_type) |>
+  summarise(
+    total_emissions = sum(total_emissions_MtCO2e, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  arrange(desc(total_emissions))
+ggplot(emissions_by_parent_type, aes(x = reorder(parent_type, total_emissions), y = total_emissions, fill = parent_type)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  scale_fill_viridis_d() +
+  scale_y_continuous(labels = label_comma()) + 
+  ggtitle("Total Emissions by Parent Type") +
+  xlab("Parent Type") +
+  ylab("Total Emissions (MtCO2e)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    legend.position = "none"
+  )
+```
+
+## Total Emissions Over Years by Top 10 Parent Entities
+```{r}
+filtered_data <- dataset |>
+  filter(parent_entity %in% agg_top_10$parent_entity)
+
+top_10_data <- dataset |>
+  filter(parent_entity %in% agg_top_10$parent_entity) |>
+  group_by(parent_entity, year) |>
+  summarise(total_emissions_yearly = sum(as.numeric(total_emissions_MtCO2e), na.rm = TRUE))
+
+ggplot(top_10_data, aes(x = year, y = total_emissions_yearly)) +
+  geom_line(aes(color = parent_entity)) +
+  facet_wrap(~parent_entity, scales = "free_y") +
+  scale_colour_viridis_d() + #categorical data parent_entity is discrete
+  ggtitle("Total Emissions Over Years for Top 10 Emitters") +
+  xlab("Year") +
+  ylab("Total Emissions (MtCO2e)") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.6),
+    legend.position = "none"
+  )
+```
+## Percentage of Emissions by Commodities
+```{r}
+dataset <- dataset |>
+  mutate(total_emissions_MtCO2e = as.numeric(total_emissions_MtCO2e))
+commodity_emissions <- dataset |>
+  filter(!is.na(total_emissions_MtCO2e)) |>
+  group_by(commodity) |>
+  summarise(total_emissions = sum(total_emissions_MtCO2e, na.rm = TRUE)) |>
+  arrange(desc(total_emissions))
+commodity_emissions <- commodity_emissions |>
+  mutate(percentage = total_emissions / sum(total_emissions) * 100)
+ggplot(commodity_emissions, aes(x = "", y = total_emissions, fill = commodity)) +
+  geom_bar(stat = "identity", width = 1) +
+  coord_polar(theta = "y") +
+  ggtitle("Percentage of Total Emissions by Commodity") +
+  theme_void() +
+  theme(legend.position = "bottom") +
+  scale_fill_brewer(palette = "Set3") +
+  geom_text(aes(label = paste0(round(percentage, 1), "%")), 
+            position = position_stack(vjust = 0.5), color = "black", size = 3)
+```
+
+## Different Emission Types from Parent Entities
+```{r}
+total_emissions_by_entity <- dataset |>
+  mutate(across(
+    c(product_emissions_MtCO2, 
+      flaring_emissions_MtCO2, 
+      venting_emissions_MtCO2,
+      own_fuel_use_emissions_MtCO2,
+      fugitive_methane_emissions_MtCO2e,
+      fugitive_methane_emissions_MtCH4), 
+    as.numeric, 
+    .names = "{.col}_num")) |>
+  group_by(parent_entity) |>
+  summarise(
+    total_product_emissions_MtCO2 = sum(product_emissions_MtCO2_num, na.rm = TRUE),
+    total_flaring_emissions_MtCO2 = sum(flaring_emissions_MtCO2_num, na.rm = TRUE),
+    total_venting_emissions_MtCO2 = sum(venting_emissions_MtCO2_num, na.rm = TRUE),
+    total_own_fuel_use_emissions_MtCO2 = sum(own_fuel_use_emissions_MtCO2_num, na.rm = TRUE),
+    total_fugitive_methane_emissions_MtCO2e = sum(fugitive_methane_emissions_MtCO2e_num, na.rm = TRUE),
+    total_fugitive_methane_emissions_MtCH4 = sum(fugitive_methane_emissions_MtCH4_num, na.rm = TRUE)
+  ) |>
+  ungroup()
+top_5_emissions <- total_emissions_by_entity |>
+  arrange(desc(total_product_emissions_MtCO2)) |>
+  head(5)
+
+total_emissions_long <- top_5_emissions |>
+  pivot_longer(
+    cols = starts_with("total_"),
+    names_to = "emission_type",
+    values_to = "emission_value"
+)
+ggplot(total_emissions_long, aes(x = parent_entity, y = emission_value, fill = emission_type)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  coord_flip() + 
+  ggtitle("Different Emission Types for Top 5 Parent Entities(Across All Years)") +
+  xlab("Parent Entity") +
+  ylab("Total Emissions (MtCO2e)") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+
+## Comparision between Operational Emissions and Product Emissions
+```{r}
+emissions_summary <- dataset |>
+  group_by(parent_entity) |>
+  summarise(
+    total_operational_emissions = sum(as.numeric(total_operational_emissions_MtCO2e), na.rm = TRUE),
+    total_product_emissions = sum(as.numeric(product_emissions_MtCO2), na.rm = TRUE),
+    total_combined_emissions = total_operational_emissions + total_product_emissions,
+    .groups = "drop"
+  ) |>
+  arrange(desc(total_combined_emissions)) |>
+  slice_head(n = 5)
+emissions_long <- emissions_summary |>
+  pivot_longer(
+    cols = c(total_operational_emissions, total_product_emissions),
+    names_to = "emission_type",
+    values_to = "emission_value"
+  )
+dodged_chart <- ggplot(emissions_long, aes(
+  x = emission_value,
+  y = reorder(parent_entity, emission_value),
+  fill = emission_type
+)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Operational and Product Emissions for Top 5 Parent Entities",
+    x = "Emissions (MtCO2e)",
+    y = "Parent Entity",
+    fill = "Emission Type"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.text.x = element_text(angle = 0, hjust = 1)
+  )
+dodged_chart
+```
+## Total Emissions from Top 5 Parent Entities through Plotly
+```{r}
+top_emitters_summary <- dataset |>
+  group_by(parent_entity) |>
+  summarise(
+    total_emissions = sum(as.numeric(total_emissions_MtCO2e), na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  arrange(desc(total_emissions)) |>
+  slice_head(n = 5)
+emissions_by_year <- dataset |>
+  filter(parent_entity %in% top_emitters_summary$parent_entity) |>
+  group_by(parent_entity, year) |>
+  summarise(
+    total_emissions = sum(as.numeric(total_emissions_MtCO2e), na.rm = TRUE),
+    .groups = "drop"
+  )
+p_total <- plot_ly(
+  emissions_by_year,
+  x = ~year,
+  y = ~total_emissions,
+  color = ~parent_entity,
+  type = 'scatter',
+  mode = 'lines+markers',
+  text = ~paste("Year:", year, "<br>Total Emissions:", total_emissions, "MtCO2e"),
+  hoverinfo = 'text'
+) |>
+  layout(
+    title = "Total Emissions Over Years for Top 5 Parent Entities",
+    xaxis = list(title = "Year"),
+    yaxis = list(title = "Total Emissions (MtCO2e)")
+  )
+p_total
+```
+
+
+## Thank you for your time and attention!
+

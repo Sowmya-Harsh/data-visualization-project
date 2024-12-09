@@ -1,0 +1,74 @@
+.reveal .slides {
+  overflow: hidden !important;
+  height: 100vh;
+}
+
+.reveal .slides section:first-child {
+  background-color: orange;
+  color: black;
+}
+
+.reveal .slides section:last-child {
+  background-color: orange;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: black;
+}
+
+.reveal .slides section:last-child h3 {
+  color: black;
+  text-align: center;
+}
+
+.reveal .slides section:first-child h1,
+.reveal .slides section:last-child h1 {
+  color: black;
+}
+
+.reveal .slides section h1 {
+  background-color: orange;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.reveal .slides section h3 {
+  background-color: orange;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+.reveal .slides section:not(:first-child):not(:last-child) {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: black;
+  overflow: hidden;
+  height: 100%;
+}
+
+body {
+  background-color: white;
+  color: black;
+  font-family: Arial, sans-serif;
+}
+
+a {
+  color: orange;
+}
+
+.reveal {
+  overflow: hidden !important;
+  height: 100vh;
+}
+Slide1 - name subtitle
+Slide2- Sources of dataset and inspiration
+3- dataset show some
+4- Data selection and modification
+5-colinearity?
+GT for showing Tables not GTable
+Stacked barcharts
+gglikers from ggstats package for likert scale plot
+Show distribution in case of large data??
+Not top 10 or 20 but handpick some entities based on some categories...countries having something in common
+
